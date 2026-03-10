@@ -44,7 +44,7 @@ namespace Quadono
         /// </summary>
         public static List<ImportantDate> GetUpcomingImportantDates(int daysAhead = 90)
         {
-            var today = DateTime.Today;
+            var today = TimeZoneService.BeijingToday;
             var upcoming = new List<ImportantDate>();
             
             foreach (var date in GetAllImportantDates())
@@ -83,7 +83,7 @@ namespace Quadono
             if (level.HasValue)
                 dates = dates.Where(d => d.Level == level.Value).ToList();
             
-            var currentYear = DateTime.Today.Year;
+            var currentYear = TimeZoneService.CurrentYear;
             
             if (!dates.Any())
             {
@@ -133,10 +133,13 @@ namespace Quadono
                     
                     if (date.ShouldShowRegistrationReminder(currentYear))
                     {
-                        Console.WriteLine($"    ⚠️  报名提醒: 还有{daysUntil - date.RegistrationAdvanceDays}天截止报名！");
+                        var daysUntilRegistrationDeadline = daysUntil - date.RegistrationAdvanceDays;
+                        Console.WriteLine($"    ⚠️  报名提醒: 还有{daysUntilRegistrationDeadline}天截止报名！");
                         if (!string.IsNullOrEmpty(date.RegistrationUrl))
                             Console.WriteLine($"    报名网址: {date.RegistrationUrl}");
                     }
+                    else
+                        Console.WriteLine($"    ⚠️  报名提醒: 报名已截止！");
                 }
                 Console.WriteLine();
             }
@@ -148,7 +151,7 @@ namespace Quadono
         public static void ShowUpcomingImportantDates(int daysAhead = 90)
         {
             var upcoming = GetUpcomingImportantDates(daysAhead);
-            var today = DateTime.Today;
+            var today = TimeZoneService.BeijingToday;
             
             var registrationReminders = GetRegistrationReminders(today.Year);
             
@@ -283,7 +286,7 @@ namespace Quadono
             }
             
             Console.WriteLine($"【搜索结果：\"{keyword}\"】");
-            var currentYear = DateTime.Today.Year;
+            var currentYear = TimeZoneService.CurrentYear;
             
             foreach (var date in dates.OrderBy(d => d.Month).ThenBy(d => d.Day))
             {
@@ -307,7 +310,7 @@ namespace Quadono
         /// <summary>
         /// 加载自定义重要日
         /// </summary>
-        private static List<ImportantDate> LoadCustomImportantDates()
+        public static List<ImportantDate> LoadCustomImportantDates()
         {
             if (!File.Exists(_customImportantDatesFile))
                 return new List<ImportantDate>();
@@ -326,7 +329,7 @@ namespace Quadono
         /// <summary>
         /// 保存自定义重要日
         /// </summary>
-        private static void SaveCustomImportantDates(List<ImportantDate> dates)
+        public static void SaveCustomImportantDates(List<ImportantDate> dates)
         {
             var json = JsonSerializer.Serialize(dates, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_customImportantDatesFile, json);

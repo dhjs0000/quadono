@@ -91,25 +91,112 @@ namespace Quadono
         public int HolidayDays { get; set; } = 1;
         
         /// <summary>
-        /// 获取当前年份的节日日期
+        /// 是否受时区影响（基于天文计算的节日，如清明节）
+        /// 当为true时，如果UTC和北京时间日期不同，会显示两个日期
+        /// </summary>
+        public bool IsTimeZoneSensitive { get; set; }
+
+        /// <summary>
+        /// 获取当前年份的节日日期（北京时间）
         /// </summary>
         public DateTime GetDate(int year)
         {
+            // 如果是基于节气的节日（如清明节），使用节气计算
+            if (IsSolarTerm)
+            {
+                return GetSolarTermDate(year);
+            }
+            
             if (IsLunar)
             {
-                // 简化的农历转换，实际应用中需要更复杂的农历算法
-                return LunarCalendarConverter.GetGregorianDate(year, LunarMonth ?? Month, LunarDay ?? Day);
+                // 使用精确的农历算法进行转换
+                return LunarCalendar.ToGregorianDate(year, LunarMonth ?? Month, LunarDay ?? Day);
             }
             return new DateTime(year, Month, Day);
         }
         
+        /// <summary>
+        /// 是否基于二十四节气（如清明节）
+        /// </summary>
+        public bool IsSolarTerm { get; set; }
+        
+        /// <summary>
+        /// 节气名称（如果IsSolarTerm为true）
+        /// </summary>
+        public string? SolarTermName { get; set; }
+        
+        /// <summary>
+        /// 获取节气日期
+        /// </summary>
+        private DateTime GetSolarTermDate(int year)
+        {
+            if (string.IsNullOrEmpty(SolarTermName))
+                return new DateTime(year, Month, Day);
+            
+            // 查找对应的节气索引
+            int termIndex = SolarTermName switch
+            {
+                "小寒" => 0, "大寒" => 1, "立春" => 2, "雨水" => 3,
+                "驚蟄" => 4, "春分" => 5, "清明" => 6, "穀雨" => 7,
+                "立夏" => 8, "小滿" => 9, "芒種" => 10, "夏至" => 11,
+                "小暑" => 12, "大暑" => 13, "立秋" => 14, "處暑" => 15,
+                "白露" => 16, "秋分" => 17, "寒露" => 18, "霜降" => 19,
+                "立冬" => 20, "小雪" => 21, "大雪" => 22, "冬至" => 23,
+                // 兼容简体中文
+                "惊蛰" => 4, "谷雨" => 7, "小满" => 9, "芒种" => 10,
+                "处暑" => 15,
+                _ => -1
+            };
+            
+            if (termIndex < 0)
+                return new DateTime(year, Month, Day);
+            
+            return LunarCalendar.GetSolarTermDate(year, termIndex);
+        }
+        
+        /// <summary>
+        /// 获取当前年份的节日日期（UTC时间）
+        /// 仅对受时区影响的节日有意义
+        /// </summary>
+        public DateTime GetDateUtc(int year)
+        {
+            // 对于受时区影响的节日，UTC日期可能与北京时间不同
+            // 这里简化处理：减去8小时
+            var beijingDate = GetDate(year);
+            return beijingDate.AddHours(-8);
+        }
+        
+        /// <summary>
+        /// 获取格式化的节日日期显示
+        /// 对于受时区影响的节日，如果UTC和北京时间日期不同，会同时显示
+        /// </summary>
+        public string GetFormattedDateDisplay(int year)
+        {
+            var beijingDate = GetDate(year);
+            
+            if (!IsTimeZoneSensitive)
+            {
+                return $"{beijingDate:MM月dd日}";
+            }
+            
+            // 对于受时区影响的节日，检查UTC和北京时间是否日期不同
+            var utcDate = GetDateUtc(year);
+            
+            if (utcDate.Date != beijingDate.Date)
+            {
+                return $"{beijingDate:MM月dd日}(UTC+8) / {utcDate:MM月dd日}(UTC)";
+            }
+            
+            return $"{beijingDate:MM月dd日}";
+        }
+
         /// <summary>
         /// 获取距离节日的天数
         /// </summary>
         public int DaysUntil(int year)
         {
             var holidayDate = GetDate(year);
-            var today = DateTime.Today;
+            var today = TimeZoneService.BeijingToday;
             
             if (holidayDate < today)
             {
@@ -135,33 +222,4 @@ namespace Quadono
         }
     }
 
-    /// <summary>
-    /// 简化的农历转换器
-    /// </summary>
-    public static class LunarCalendarConverter
-    {
-        /// <summary>
-        /// 获取指定农历日期对应的公历日期（简化版本）
-        /// </summary>
-        public static DateTime GetGregorianDate(int year, int lunarMonth, int lunarDay)
-        {
-            // 这里使用简化的转换逻辑
-            // 实际应用中需要使用完整的农历算法
-            
-            // 春节通常在1月21日-2月20日之间
-            if (lunarMonth == 1 && lunarDay == 1)
-            {
-                // 简化计算：春节在1月21日到2月20日之间循环
-                int springFestivalDay = 21 + (year - 2020) % 30;
-                if (springFestivalDay > 51) springFestivalDay -= 31;
-                int month = springFestivalDay > 31 ? 2 : 1;
-                int day = springFestivalDay > 31 ? springFestivalDay - 31 : springFestivalDay;
-                return new DateTime(year, month, day);
-            }
-            
-            // 其他农历节日的简化处理
-            // 这里返回一个近似日期，实际应用中需要准确的农历算法
-            return new DateTime(year, lunarMonth, Math.Min(lunarDay, 28));
-        }
-    }
 }

@@ -36,7 +36,7 @@ namespace Quadono
         /// </summary>
         public static List<Holiday> GetUpcomingHolidays(int daysAhead = 30)
         {
-            var today = DateTime.Today;
+            var today = TimeZoneService.BeijingToday;
             var upcoming = new List<Holiday>();
             
             foreach (var holiday in GetAllHolidays())
@@ -67,7 +67,7 @@ namespace Quadono
         public static void ListHolidays(HolidayType? type = null)
         {
             var holidays = type.HasValue ? GetHolidaysByType(type.Value) : GetAllHolidays();
-            var currentYear = DateTime.Today.Year;
+            var currentYear = TimeZoneService.CurrentYear;
             
             if (!holidays.Any())
             {
@@ -89,7 +89,8 @@ namespace Quadono
                     if (!string.IsNullOrEmpty(holiday.EnglishName))
                         Console.Write($" ({holiday.EnglishName})");
                     
-                    Console.Write($" - {date:MM月dd日}");
+                    // 使用格式化日期显示，支持时区敏感节日
+                    Console.Write($" - {holiday.GetFormattedDateDisplay(currentYear)}");
                     
                     if (holiday.IsLunar)
                         Console.Write($" (农历{holiday.LunarMonth}月{holiday.LunarDay}日)");
@@ -119,7 +120,7 @@ namespace Quadono
         public static void ShowUpcomingHolidays(int daysAhead = 30)
         {
             var upcoming = GetUpcomingHolidays(daysAhead);
-            var today = DateTime.Today;
+            var today = TimeZoneService.BeijingToday;
 
             if (!upcoming.Any())
             {
@@ -328,9 +329,12 @@ namespace Quadono
                     Name = "清明节", 
                     EnglishName = "Qingming Festival",
                     Type = HolidayType.Chinese, 
-                    Month = 4, Day = 4, 
+                    Month = 4, Day = 4,  // 默认值，实际日期由节气计算
                     Description = "祭祖扫墓的传统节日",
-                    IsPublicHoliday = true
+                    IsPublicHoliday = true,
+                    IsTimeZoneSensitive = true,  // 清明节基于太阳黄经，受时区影响
+                    IsSolarTerm = true,  // 基于节气计算日期
+                    SolarTermName = "清明"
                 },
                 new Holiday 
                 { 

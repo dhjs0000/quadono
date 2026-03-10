@@ -167,6 +167,41 @@ namespace Quadono
         public List<string> Tags { get; set; } = new();
 
         /// <summary>
+        /// 默认构造函数
+        /// </summary>
+        public ImportantDate()
+        {
+        }
+
+        /// <summary>
+        /// 使用基本参数创建重要日
+        /// </summary>
+        /// <param name="name">重要日名称</param>
+        /// <param name="type">重要日类型</param>
+        /// <param name="level">重要级别</param>
+        /// <param name="year">年份</param>
+        /// <param name="month">月份</param>
+        /// <param name="day">日期</param>
+        /// <param name="description">描述信息</param>
+        public ImportantDate(
+            string name,
+            ImportantDateType type,
+            ImportanceLevel level,
+            int year,
+            int month,
+            int day,
+            string description)
+        {
+            Name = name;
+            Type = type;
+            Level = level;
+            Year = year;
+            Month = month;
+            Day = day;
+            Description = description;
+        }
+
+        /// <summary>
         /// 获取当前年份的重要日日期
         /// </summary>
         public DateTime GetDate(int currentYear)
@@ -274,7 +309,10 @@ namespace Quadono
                 return false;
                 
             var daysUntil = DaysUntil(currentYear);
-            return daysUntil <= RegistrationAdvanceDays && daysUntil > 0;
+            // 只有当考试还没到，且报名尚未截止时才显示提醒
+            // 报名截止日 = 考试日 - 提前报名天数
+            // 所以 daysUntil > RegistrationAdvanceDays 表示报名还未截止
+            return daysUntil > RegistrationAdvanceDays && daysUntil > 0;
         }
     }
 
